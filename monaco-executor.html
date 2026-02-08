@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Executor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: rgb(25, 25, 25);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .tabs-container {
+            display: flex;
+            background: rgb(25, 25, 25);
+            border-bottom: 1px solid rgba(79, 70, 229, 0.1);
+            overflow-x: auto;
+            min-height: 40px;
+        }
+
+        .tabs-container::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .tabs-container::-webkit-scrollbar-thumb {
+            background: rgba(79, 70, 229, 0.3);
+            border-radius: 10px;
+        }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 18px;
+            height: 40px;
+            background: rgb(25, 25, 25);
+            border-right: 1px solid rgba(255, 255, 255, 0.03);
+            color: #888;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 140px;
+            user-select: none;
+            position: relative;
+            border-radius: 12px 12px 0 0;
+            margin-right: 4px;
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: transparent;
+            border-radius: 10px 10px 0 0;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.02);
+            color: #aaa;
+        }
+
+        .tab.active {
+            background: rgba(79, 70, 229, 0.08);
+            color: #fff;
+        }
+
+        .tab.active::after {
+            background: #4F46E5;
+            box-shadow: 0 0 12px rgba(79, 70, 229, 0.5);
+        }
+
+        .tab-icon {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: opacity 0.25s;
+        }
+
+        .tab.active .tab-icon {
+            opacity: 1;
+        }
+
+        .tab-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            outline: none;
+            border: none;
+            background: transparent;
+            color: inherit;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        .tab-name[contenteditable="true"] {
+            background: rgba(79, 70, 229, 0.1);
+            padding: 3px 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(79, 70, 229, 0.3);
+        }
+
+        .tab-close {
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            line-height: 1;
+            flex-shrink: 0;
+            opacity: 0;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab:hover .tab-close {
+            opacity: 1;
+        }
+
+        .tab-close:hover {
+            background: rgba(255, 59, 48, 0.15);
+            color: #ff3b30;
+            transform: scale(1.1);
+        }
+
+        .tab-add {
+            width: 40px;
+            min-width: 40px;
+            height: 40px;
+            background: transparent;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .tab-add:hover {
+            color: #4F46E5;
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .editor-wrapper {
+            flex: 1;
+            position: relative;
+            background: rgb(25, 25, 25);
+        }
+
+        #editor {
+            width: 100%;
+            height: 100%;
+        }
+
+        @keyframes tabSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tab {
+            animation: tabSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tabs-container" id="tabsContainer">
+            <div class="tab active" data-tab="tab1">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="#4F46E5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+                </svg>
+                <span class="tab-name">Script.lua</span>
+                <button class="tab-close">×</button>
+            </div>
+            <button class="tab-add" id="addTab" title="New Tab">+</button>
+        </div>
+
+        <div class="editor-wrapper">
+            <div id="editor"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script>
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+
+        let editor;
+        let tabs = new Map();
+        let tabCounter = 1;
+        let activeTabId = 'tab1';
+        let availableNumbers = []; // Track deleted tab numbers for reuse
+
+        require(['vs/editor/editor.main'], function () {
+            monaco.editor.defineTheme('executor-theme', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'comment', foreground: '5c6370', fontStyle: 'italic' },
+                    { token: 'keyword', foreground: 'c678dd' },
+                    { token: 'string', foreground: '98c379' },
+                    { token: 'number', foreground: 'd19a66' },
+                    { token: 'function', foreground: '61afef' },
+                    { token: 'variable', foreground: 'e06c75' },
+                    { token: 'operator', foreground: '56b6c2' },
+                ],
+                colors: {
+                    'editor.background': '#191919',
+                    'editor.foreground': '#abb2bf',
+                    'editorCursor.foreground': '#4F46E5',
+                    'editor.lineHighlightBackground': '#1f1f1f',
+                    'editor.selectionBackground': '#4F46E540',
+                    'editor.inactiveSelectionBackground': '#4F46E520',
+                    'editorLineNumber.foreground': '#4a4a4a',
+                    'editorLineNumber.activeForeground': '#4F46E5',
+                    'editorIndentGuide.background': '#2a2a2a',
+                    'editorIndentGuide.activeBackground': '#4F46E5',
+                    'editorWhitespace.foreground': '#2a2a2a',
+                }
+            });
+
+            const initialModel = monaco.editor.createModel('-- Lucent.lol\nprint("Welcome to Lucent!")', 'lua');
+            
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                model: initialModel,
+                theme: 'executor-theme',
+                fontSize: 14,
+                fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
+                lineHeight: 20,
+                letterSpacing: 0.5,
+                minimap: { 
+                    enabled: true,
+                    side: 'right',
+                    showSlider: 'mouseover',
+                    renderCharacters: false
+                },
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                roundedSelection: true,
+                smoothScrolling: true,
+                cursorBlinking: 'smooth',
+                cursorSmoothCaretAnimation: 'on',
+                padding: { top: 16, bottom: 16 },
+                scrollbar: {
+                    vertical: 'auto',
+                    horizontal: 'auto',
+                    verticalScrollbarSize: 10,
+                    horizontalScrollbarSize: 10,
+                    useShadows: false
+                },
+                renderLineHighlight: 'all',
+                renderWhitespace: 'selection',
+                guides: {
+                    indentation: true,
+                    bracketPairs: true
+                }
+            });
+
+            tabs.set('tab1', {
+                name: 'Script.lua',
+                model: initialModel,
+                number: 1
+            });
+
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('addTab').addEventListener('click', addNewTab);
+
+            document.getElementById('tabsContainer').addEventListener('click', (e) => {
+                const tab = e.target.closest('.tab');
+                const closeBtn = e.target.closest('.tab-close');
+
+                if (closeBtn && tab) {
+                    closeTab(tab.dataset.tab);
+                    e.stopPropagation();
+                } else if (tab) {
+                    switchTab(tab.dataset.tab);
+                }
+            });
+
+            document.getElementById('tabsContainer').addEventListener('dblclick', (e) => {
+                const tabName = e.target.closest('.tab-name');
+                if (tabName && !tabName.isContentEditable) {
+                    const tab = tabName.closest('.tab');
+                    renameTab(tab.dataset.tab, tabName);
+                }
+            });
+        }
+
+        function addNewTab() {
+            // Reuse the lowest available number or increment
+            let tabNumber;
+            if (availableNumbers.length > 0) {
+                availableNumbers.sort((a, b) => a - b);
+                tabNumber = availableNumbers.shift();
+            } else {
+                tabCounter++;
+                tabNumber = tabCounter;
+            }
+            
+            const tabId = `tab${tabNumber}`;
+            const tabName = `Script${tabNumber}.lua`;
+
+            const model = monaco.editor.createModel(`-- ${tabName}\n`, 'lua');
+            tabs.set(tabId, {
+                name: tabName,
+                model: model,
+                number: tabNumber
+            });
+
+            const tabElement = document.createElement('div');
+            tabElement.className = 'tab';
+            tabElement.dataset.tab = tabId;
+            tabElement.innerHTML = `
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="#4F46E5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+                </svg>
+                <span class="tab-name">${tabName}</span>
+                <button class="tab-close">×</button>
+            `;
+
+            const addBtn = document.getElementById('addTab');
+            addBtn.parentNode.insertBefore(tabElement, addBtn);
+
+            switchTab(tabId);
+        }
+
+        function switchTab(tabId) {
+            if (!tabs.has(tabId)) return;
+
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            const targetTab = document.querySelector(`[data-tab="${tabId}"]`);
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
+
+            activeTabId = tabId;
+            editor.setModel(tabs.get(tabId).model);
+            editor.focus();
+        }
+
+        function closeTab(tabId) {
+            if (tabs.size <= 1) return;
+
+            const tabElement = document.querySelector(`[data-tab="${tabId}"]`);
+            if (!tabElement) return;
+
+            const tabsArray = Array.from(tabs.keys());
+            const currentIndex = tabsArray.indexOf(tabId);
+            
+            // Store the tab number for reuse
+            const tabData = tabs.get(tabId);
+            if (tabData && tabData.number) {
+                availableNumbers.push(tabData.number);
+            }
+
+            tabElement.style.animation = 'tabSlideIn 0.2s reverse';
+            
+            setTimeout(() => {
+                tabElement.remove();
+                tabs.get(tabId).model.dispose();
+                tabs.delete(tabId);
+
+                if (activeTabId === tabId) {
+                    const newIndex = Math.min(currentIndex, tabsArray.length - 2);
+                    const newTabId = tabsArray.filter(id => id !== tabId)[newIndex] || tabsArray.filter(id => id !== tabId)[0];
+                    switchTab(newTabId);
+                }
+            }, 200);
+        }
+
+        function renameTab(tabId, tabNameElement) {
+            const currentName = tabs.get(tabId).name;
+            
+            tabNameElement.contentEditable = 'true';
+            tabNameElement.focus();
+            
+            // Select all text
+            const range = document.createRange();
+            range.selectNodeContents(tabNameElement);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            const finishRename = () => {
+                tabNameElement.contentEditable = 'false';
+                const newName = tabNameElement.textContent.trim() || currentName;
+                tabNameElement.textContent = newName;
+                tabs.get(tabId).name = newName;
+            };
+
+            tabNameElement.addEventListener('blur', finishRename, { once: true });
+            tabNameElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    tabNameElement.blur();
+                }
+                if (e.key === 'Escape') {
+                    tabNameElement.textContent = currentName;
+                    tabNameElement.blur();
+                }
+            }, { once: true });
+        }
+    </script>
+</body>
+</html>
